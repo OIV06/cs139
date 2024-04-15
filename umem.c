@@ -46,8 +46,10 @@ int umeminit(size_t sizeOfRegion, int allocationAlgo) {
         return -1;
     }
 
+ region->header = (header_t *)((char *)region + sizeof(node_t));
+    
     // Initialize the embedded header
-    region->header->size = region_size - sizeof(header_t);
+    region->header->size = region_size - sizeof(node_t) - sizeof(header_t); // subtract size of node_t and header_t
     region->header->is_free = 1;
     region->header->magic = 0x12345678; // Example magic number
 

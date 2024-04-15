@@ -1,11 +1,16 @@
-#include <umem.h>
+#include "umem.h"
+#include <stdlib.h>
+#include <stdio.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <stdio.h> 
+#include <string.h>
+#include <fcntl.h>
+#include <errno.h>
+
 
 #define PAGE_SIZE getpagesize()
 
-node_t* free_list = NULL;
+
 static int allocator_initialized = 0;  
 
 typedef struct header_t {
@@ -19,6 +24,7 @@ typedef struct node_t {
     struct node_t *next;       // Pointer to the next node in the list
     struct node_t *prev;       // Pointer to the previous node in the list (if using a doubly-linked list)
 } node_t;
+node_t* free_list = NULL;
 
 int umeminit(size_t sizeOfRegion, int allocationAlgo) {
     if (allocator_initialized) {

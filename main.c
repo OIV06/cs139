@@ -6,9 +6,10 @@
 #include <stdint.h>
 
 void print_free_list(node_t *list) {
+    printf("Current free list:\n");
     while (list) {
-        printf("Free block: Address=%p, Size=%zu, Is_Free=%d, Magic=0x%lx\n",
-               (void *)list, list->header->size, list->header->is_free, list->header->magic);
+        printf("Free block: Address=%p, Size=%zu, Is_Free=%d\n",
+               (void *)list, list->header->size, list->header->is_free);
         list = list->next;
     }
 }
@@ -43,6 +44,30 @@ void test_allocation_zero_size() {
     // Free not needed as ptr should be NULL
 }
 
+void test_ufree() {
+    printf("Test ufree\n");
+
+    // Allocate several blocks
+    void *block1 = umalloc(100);
+    void *block2 = umalloc(200);
+    void *block3 = umalloc(300);
+
+    // Free the first block
+    assert(ufree(block1) == 0);
+    printf("Block1 freed\n");
+    print_free_list(free_list);
+
+    // Free the third block
+    assert(ufree(block3) == 0);
+    printf("Block3 freed\n");
+    print_free_list(free_list);
+
+    // Free the second block, which should trigger coalescing with the first and third blocks
+    assert(ufree(block2) == 0);
+    printf("Block2 freed and coalesced\n");
+    print_free_list(free_list);
+}
+
 int main() {
     size_t region_size = 4096; // The size of the region you want to allocate
     int alloc_algo = 1; // Placeholder for allocation algorithm identifier
@@ -62,6 +87,8 @@ int main() {
 
     // Run test for zero-size allocation
     test_allocation_zero_size();
+
+     test_ufree();
 
     // Additional tests can be performed here to ensure the allocator works
     // Remember to handle freeing any allocated memory and cleaning up

@@ -205,9 +205,9 @@ int ufree(void *ptr) {
     // Coalesce with next block if possible.
     node_t *node = (node_t *)header;
     node_t *next_node = node->next;
-    if (next_node && next_node->header->is_free) {
-        // Merge with next free block.
-        header->size += sizeof(node_t) + next_node->header->size;
+    if (node->next && node->next->header->is_free) {
+        node_t *next_node = node->next;
+        header->size += next_node->header->size + sizeof(node_t);
         node->next = next_node->next;
         if (next_node->next) {
             next_node->next->prev = node;
@@ -215,18 +215,18 @@ int ufree(void *ptr) {
     }
 
     // Coalesce with previous block if possible.
-    node_t *prev_node = node->prev;
-    if (prev_node && prev_node->header->is_free) {
-        // Merge with previous free block.
-        prev_node->header->size += sizeof(node_t) + header->size;
+    if (node->prev && node->prev->header->is_free) {
+        node_t *prev_node = node->prev;
+        prev_node->header->size += header->size + sizeof(node_t);
         prev_node->next = node->next;
         if (node->next) {
             node->next->prev = prev_node;
         }
+        node = prev_node; // Update the current node to the previous one since it's now the start of the merged block
     }
 
-    // If the block is the first in the free list, update the free list head.
-    if (free_list > node) {
+    // Update the free list head if needed.
+    if (node < free_list || free_list == NULL) {
         free_list = node;
     }
 

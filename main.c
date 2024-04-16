@@ -1,6 +1,9 @@
-#include "umem.c"
 #include "umem.h"
+#include "umem.c"
 #include <stdio.h>
+#include <assert.h>
+#include <string.h>
+#include <stdint.h>
 
 void print_free_list(node_t *list) {
     while (list) {
@@ -8,6 +11,36 @@ void print_free_list(node_t *list) {
                (void *)list, list->header->size, list->header->is_free, list->header->magic);
         list = list->next;
     }
+}
+
+void test_allocation_alignment(size_t size) {
+    printf("Test 1: Allocation and Alignment\n");
+    void *ptr = umalloc(size);
+    if (ptr == NULL) {
+        printf("Allocation failed for size %zu\n", size);
+        printf("Test 1: FAIL\n");
+    } else if (((uintptr_t)ptr & 7) != 0) {
+        printf("Allocation for size %zu is not aligned to 8 bytes. Address=%p\n", size, ptr);
+        printf("Test 1: FAIL\n");
+    } else {
+        printf("Allocation and alignment successful for size %zu. Address=%p\n", size, ptr);
+        printf("Test 1: PASS\n");
+    }
+    // Remember to free after testing if you're going to reuse this memory
+    // ufree(ptr);
+}
+
+void test_allocation_zero_size() {
+    printf("Test 2: Zero-Size Allocation\n");
+    void *ptr = umalloc(0);
+    if (ptr != NULL) {
+        printf("Non-NULL returned for zero-size allocation.\n");
+        printf("Test 2: FAIL\n");
+    } else {
+        printf("Correctly returned NULL for zero-size allocation.\n");
+        printf("Test 2: PASS\n");
+    }
+    // Free not needed as ptr should be NULL
 }
 
 int main() {
@@ -24,7 +57,14 @@ int main() {
     printf("Free list after initialization:\n");
     print_free_list(free_list);
 
+    // Run test for normal allocation and alignment
+    test_allocation_alignment(128);
+
+    // Run test for zero-size allocation
+    test_allocation_zero_size();
+
     // Additional tests can be performed here to ensure the allocator works
+    // Remember to handle freeing any allocated memory and cleaning up
 
     return 0;
 }

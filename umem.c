@@ -191,38 +191,43 @@ void *umalloc(size_t size) {
 
 int ufree(void *ptr) {
     if (!ptr) {
-        return 0; // Following the standard free behavior for NULL pointers.
+        return 0; // Do nothing for NULL pointer, as per the standard free behavior.
     }
 
-    // Convert the user pointer to a block pointer by subtracting the size of the header.
-    header_t *header = (header_t *)ptr - 1;
+    header_t *header = (header_t *)ptr - 1; // Get the header from the given pointer.
 
-    // Check the magic number for error checking.
     if (header->magic != 0x12345678) {
-        return -1; // Indicates a potential error if the magic number does not match.
+        return -1; // The magic number does not match, indicating a potential error.
     }
 
-    // Mark the block as free.
-    header->is_free = 1;
+    header->is_free = 1; // Mark the block as free.
 
-    // Attempt to coalesce with next block if it's free.
-    node_t *next_node = (node_t *)((char *)ptr + header->size);
-    if (next_node < free_list + free_list->header->size && next_node->header->is_free) {
-        // Merge with the next block.
+    // Coalesce with next block if possible.
+    node_t *node = (node_t *)header;
+    node_t *next_node = node->next;
+    if (next_node && next_node->header->is_free) {
+        // Merge with next free block.
         header->size += sizeof(node_t) + next_node->header->size;
-        // Update links in the free list if it's a doubly-linked list.
+        node->next = next_node->next;
         if (next_node->next) {
-            next_node->next->prev = (node_t *)header;
+            next_node->next->prev = node;
         }
     }
 
-    // Attempt to coalesce with previous block if it's free.
-    // Since this is a doubly-linked list, we can directly access the previous node.
-    if (next_node->prev && next_node->prev->header->is_free) {
-        node_t *prev_node = next_node->prev;
-        // Merge with the previous block.
+    // Coalesce with previous block if possible.
+    node_t *prev_node = node->prev;
+    if (prev_node && prev_node->header->is_free) {
+        // Merge with previous free block.
         prev_node->header->size += sizeof(node_t) + header->size;
-        // No need to update links because the previous node's links are already correct.
+        prev_node->next = node->next;
+        if (node->next) {
+            node->next->prev = prev_node;
+        }
+    }
+
+    // If the block is the first in the free list, update the free list head.
+    if (free_list > node) {
+        free_list = node;
     }
 
     return 0;

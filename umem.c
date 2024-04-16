@@ -191,52 +191,38 @@ void *umalloc(size_t size) {
 
 int ufree(void *ptr) {
     if (!ptr) {
-        // If the pointer is NULL, no operation is performed.
-        return 0;
+        return 0; // Following the standard free behavior for NULL pointers.
     }
 
-    // Convert the user pointer to a block pointer.
+    // Convert the user pointer to a block pointer by subtracting the size of the header.
     header_t *header = (header_t *)ptr - 1;
-    header->is_free = 1;  // Mark the block as free.
 
-    // Coalescing with next block
-    node_t *current = (node_t *)((char *)header + sizeof(header_t) + header->size);
-    if ((char *)current < (char *)free_list + free_list->header->size) { // Ensure within heap bounds
-        if (current->header->is_free) {
-            header->size += sizeof(header_t) + current->header->size;
+    // Check the magic number for error checking.
+    if (header->magic != 0x12345678) {
+        return -1; // Indicates a potential error if the magic number does not match.
+    }
+
+    // Mark the block as free.
+    header->is_free = 1;
+
+    // Attempt to coalesce with next block if it's free.
+    node_t *next_node = (node_t *)((char *)ptr + header->size);
+    if (next_node < free_list + free_list->header->size && next_node->header->is_free) {
+        // Merge with the next block.
+        header->size += sizeof(node_t) + next_node->header->size;
+        // Update links in the free list if it's a doubly-linked list.
+        if (next_node->next) {
+            next_node->next->prev = (node_t *)header;
         }
     }
 
-    // Coalescing with previous block
-    // This part is tricky without having a doubly-linked list or storing the previous block pointer
-    // You might need to traverse the free list to find the previous block
-
-    // Insert the newly freed block at the beginning of the free list.
-    current = free_list;
-    while (current) {
-        if ((char *)current > (char *)header && current->prev && !current->prev->header->is_free) {
-            // This is where the current block should be inserted after coalescing.
-            node_t *new_node = (node_t *)header;
-            new_node->header = header;
-            new_node->next = current;
-            new_node->prev = current->prev;
-            current->prev->next = new_node;
-            current->prev = new_node;
-            break;
-        }
-        current = current->next;
-    }
-
-    // If no coalescing occurred, just insert the block at the head of the free list.
-    if (!current) {
-        node_t *new_node = (node_t *)header;
-        new_node->header = header;
-        new_node->next = free_list;
-        if (free_list) {
-            free_list->prev = new_node;
-        }
-        free_list = new_node;
-        new_node->prev = NULL; // As it's now the first node.
+    // Attempt to coalesce with previous block if it's free.
+    // Since this is a doubly-linked list, we can directly access the previous node.
+    if (next_node->prev && next_node->prev->header->is_free) {
+        node_t *prev_node = next_node->prev;
+        // Merge with the previous block.
+        prev_node->header->size += sizeof(node_t) + header->size;
+        // No need to update links because the previous node's links are already correct.
     }
 
     return 0;

@@ -189,3 +189,36 @@ void *umalloc(size_t size) {
     return (void *)(block->header + 1);  
 }
 
+int ufree(void *ptr) {
+    if (ptr == NULL) {
+        
+        return 0;
+    }
+
+
+    header_t *block_header = (header_t *)ptr - 1;
+
+    
+    block_header->is_free = 1;
+
+    
+    node_t *block_node = (node_t *)((char *)block_header - sizeof(node_t));
+    if (block_node->next && block_node->next->header->is_free) {
+        block_header->size += block_node->next->header->size + sizeof(header_t) + sizeof(node_t);
+        block_node->next = block_node->next->next;
+        if (block_node->next) {
+            block_node->next->prev = block_node;
+        }
+    }
+
+    
+    if (block_node->prev && block_node->prev->header->is_free) {
+        block_node->prev->header->size += block_header->size + sizeof(header_t) + sizeof(node_t);
+        block_node->prev->next = block_node->next;
+        if (block_node->next) {
+            block_node->next->prev = block_node->prev;
+        }
+    }
+
+    return 0;
+}

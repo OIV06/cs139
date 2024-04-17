@@ -4,12 +4,15 @@
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
-
 void print_free_list(node_t *list) {
     printf("Current free list:\n");
     while (list) {
-        printf("Free block: Address=%p, Size=%zu, Is_Free=%d\n",
-               (void *)list, list->header->size, list->header->is_free);
+        if (list->header) {
+            printf("Free block: Address=%p, Size=%zu, Is_Free=%d\n",
+                   (void *)list, list->header->size, list->header->is_free);
+        } else {
+            printf("Error: Free block at Address=%p has no header\n", (void *)list);
+        }
         list = list->next;
     }
 }

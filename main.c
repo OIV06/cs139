@@ -92,9 +92,10 @@ int main() {
     test_allocation_zero_size();
 
      test_ufree();
-
+    umemdump();
     // Additional tests can be performed here to ensure the allocator works
     // Remember to handle freeing any allocated memory and cleaning up
 
     return 0;
 }
+

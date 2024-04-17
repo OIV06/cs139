@@ -223,4 +223,14 @@ int ufree(void *ptr) {
 
     return 0;
 }
+void umemdump() {
+    node_t *current = free_list; // Use the global free list pointer
+    printf("Current free list:\n");
+    while (current != NULL) {
+        printf("Free block: Address=%p, Size=%zu, Is_Free=%d\n",
+               (void *)current, current->header->size, current->header->is_free);
+        current = current->next;
+    }
+}
+
 

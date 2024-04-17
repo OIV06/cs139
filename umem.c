@@ -188,54 +188,64 @@ void *umalloc(size_t size) {
     block->header->is_free = 0;
     return (void *)(block->header + 1);  
 }
+
+
 int ufree(void *ptr) {
     if (!ptr) {
+        fprintf(stderr, "Attempt to free a NULL pointer.\n");
         return -1; // NULL pointer, nothing to free
     }
 
-    // Convert pointer to node and header
-    header_t *header = (header_t *)ptr - 1;
+    header_t *header = (header_t *)ptr - 1; // Adjust pointer to get to the header
+
+    // Check for a valid magic number if you have one defined
+    if (header->magic != 0x12345678) {
+        fprintf(stderr, "Attempt to free a block with invalid magic number.\n");
+        return -1;
+    }
+
     if (header->is_free) {
         fprintf(stderr, "Double free detected.\n");
         return -1;
     }
 
-    // Mark block as free
-    header->is_free = 1;
+    header->is_free = 1; // Mark the block as free
 
-    // Insert into free list in sorted order and merge if possible
+    // Convert header back to node_t to manipulate the free list
     node_t *node = (node_t *)((char *)header - offsetof(node_t, header));
-    node_t *current = free_list, *prev = NULL;
 
+    // Insert sorted into the free list and merge if adjacent
+    node_t *current = free_list, *prev = NULL;
     while (current && current < node) {
         prev = current;
         current = current->next;
     }
 
-    // Insert node into free list
     node->next = current;
-    node->prev = prev;
-    if (prev) {
-        prev->next = node;
-    } else {
-        free_list = node; // New head of the free list
-    }
     if (current) {
         current->prev = node;
     }
+    if (prev) {
+        prev->next = node;
+    } else {
+        free_list = node;
+    }
+    node->prev = prev;
 
-    // Merge with next block if free
-    if (node->next && node->next->header->is_free) {
-        node->header->size += sizeof(header_t) + node->next->header->size + sizeof(node_t);
+    // Merge with next block if free and adjacent
+    if (node->next && node->next->header->is_free && 
+        (char *)(node->header) + node->header->size + sizeof(header_t) == (char *)(node->next->header)) {
+        node->header->size += sizeof(header_t) + node->next->header->size;
         node->next = node->next->next;
         if (node->next) {
             node->next->prev = node;
         }
     }
 
-    // Merge with previous block if free
-    if (node->prev && node->prev->header->is_free) {
-        node->prev->header->size += sizeof(header_t) + node->header->size + sizeof(node_t);
+    // Merge with previous block if free and adjacent
+    if (node->prev && node->prev->header->is_free && 
+        (char *)(node->prev->header) + node->prev->header->size + sizeof(header_t) == (char *)(node->header)) {
+        node->prev->header->size += sizeof(header_t) + node->header->size;
         node->prev->next = node->next;
         if (node->next) {
             node->next->prev = node->prev;

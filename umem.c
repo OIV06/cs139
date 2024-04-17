@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#define MAGIC_NUMBER 0x12345678
+
 #define PAGE_SIZE getpagesize()
 
 
@@ -188,50 +188,60 @@ void *umalloc(size_t size) {
     block->header->is_free = 0;
     return (void *)(block->header + 1);  
 }
-
 int ufree(void *ptr) {
     if (!ptr) {
-        // NULL pointer check - standard behavior of free to do nothing.
+        // NULL pointer check - standard behavior is to do nothing.
         return 0;
     }
 
-    // Calculate the header address from the given pointer.
-    header_t *header = (header_t *)ptr - 1;
+    // Calculate the header's address from the given pointer.
+    header_t *block_header = (header_t *)((char *)ptr - sizeof(header_t));
 
     // Check the magic number for error checking, indicates if the block was allocated by umalloc.
-    if (header->is_free || header->magic != MAGIC_NUMBER) {
-        // The block is either already freed or was not allocated by umalloc (corrupted).
+    if (block_header->magic != 0x12345678) {
+        // The magic number does not match; this indicates an error.
+        return -1;
+    }
+
+    // Check if the block is already free.
+    if (block_header->is_free) {
+        // This block is already free; this would be a double-free error.
         return -1;
     }
 
     // Mark the block as free.
-    header->is_free = 1;
+    block_header->is_free = 1;
 
-    // Find the actual node from the header.
-    node_t *node = (node_t *)((char *)header - offsetof(node_t, header));
-
-    // Coalesce with next block if it's free.
-    if (node->next && node->next->header->is_free) {
-        header->size += sizeof(node_t) + node->next->header->size; // Increase the size of the current block.
-        node->next = node->next->next; // Remove the next block from the list.
-        if (node->next) {
-            node->next->prev = node;
+    // Try to coalesce with the next block if it's free.
+    node_t *current_node = (node_t *)((char *)block_header - offsetof(node_t, header));
+    if (current_node->next && current_node->next->header->is_free) {
+        // Merge with the next free block.
+        block_header->size += current_node->next->header->size + sizeof(node_t);
+        current_node->next = current_node->next->next;
+        if (current_node->next) {
+            current_node->next->prev = current_node;
         }
     }
 
-    // Coalesce with previous block if it's free.
-    if (node->prev && node->prev->header->is_free) {
-        node->prev->header->size += sizeof(node_t) + header->size; // Increase the size of the previous block.
-        node->prev->next = node->next; // Connect the previous block to the next.
-        if (node->next) {
-            node->next->prev = node->prev;
+    // Try to coalesce with the previous block if it's free.
+    if (current_node->prev && current_node->prev->header->is_free) {
+        current_node->prev->header->size += block_header->size + sizeof(node_t);
+        current_node->prev->next = current_node->next;
+        if (current_node->next) {
+            current_node->next->prev = current_node->prev;
         }
-        node = node->prev; // Update the node pointer to the previous node.
-    }
-
-    // Update the free list head if needed.
-    if (free_list == NULL || node < free_list) {
-        free_list = node; // This node is now the new head of the free list.
+        // Update free_list head if current node is the first block.
+        if (current_node == free_list) {
+            free_list = current_node->prev;
+        }
+        current_node = current_node->prev;
+    } else if (free_list > current_node || free_list == NULL) {
+        // If this block is the first block or the list is empty, update the head of the free list.
+        current_node->next = free_list;
+        if (free_list) {
+            free_list->prev = current_node;
+        }
+        free_list = current_node;
     }
 
     return 0;

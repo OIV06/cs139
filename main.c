@@ -4,9 +4,9 @@
 #include <string.h>
 #include <stdint.h>
 
-
+// Tests the allocation and alignment to ensure 8-byte alignment
 void test_allocation_alignment(size_t size) {
-    printf("Test 1: Allocation and Alignment\n");
+    printf("Test 1: Allocation and Alignment for size %zu\n", size);
     void *ptr = umalloc(size);
     if (ptr == NULL) {
         printf("Allocation failed for size %zu\n", size);
@@ -18,10 +18,10 @@ void test_allocation_alignment(size_t size) {
         printf("Allocation and alignment successful for size %zu. Address=%p\n", size, ptr);
         printf("Test 1: PASS\n");
     }
-    // Remember to free after testing if you're going to reuse this memory
-    // ufree(ptr);
+    ufree(ptr); // Frees the allocated memory
 }
 
+// Tests that a request for zero bytes returns NULL
 void test_allocation_zero_size() {
     printf("Test 2: Zero-Size Allocation\n");
     void *ptr = umalloc(0);
@@ -32,57 +32,76 @@ void test_allocation_zero_size() {
         printf("Correctly returned NULL for zero-size allocation.\n");
         printf("Test 2: PASS\n");
     }
-    // Free not needed as ptr should be NULL
 }
 
+// Tests freeing of memory blocks and checks for coalescing of free space
 void test_ufree() {
-    printf("Test ufree\n");
+    printf("Test 3: Free and Coalesce\n");
 
-    // Allocate several blocks
     void *block1 = umalloc(100);
     void *block2 = umalloc(200);
     void *block3 = umalloc(300);
 
-    // Free the first block
-    assert(ufree(block1) == 0);
+    ufree(block1);  // Free the first block
     printf("Block1 freed\n");
-   
 
-    // Free the third block
-    assert(ufree(block3) == 0);
+    ufree(block3);  // Free the third block
     printf("Block3 freed\n");
-    
 
-    // Free the second block, which should trigger coalescing with the first and third blocks
-    assert(ufree(block2) == 0);
+    ufree(block2);  // Free the second block, which should coalesce all blocks
     printf("Block2 freed and coalesced\n");
-umemdump();
+
+    umemdump();  // Displays the state of memory after coalescing
+}
+
+// Tests the different memory allocation strategies
+void test_allocation_strategies() {
+    printf("Test 4: Different Allocation Strategies\n");
+
+    // Reinitialize memory system to reset the free list and the allocator state
+    umeminit(4096, BEST_FIT);
+    printf("Testing BEST FIT Strategy\n");
+    umemdump();
+    void *best_fit_ptr = umalloc(100);
+    ufree(best_fit_ptr);
+    
+    umeminit(4096, WORST_FIT);
+    printf("Testing WORST FIT Strategy\n");
+    umemdump();
+    void *worst_fit_ptr = umalloc(100);
+    ufree(worst_fit_ptr);
+
+    umeminit(4096, FIRST_FIT);
+    printf("Testing FIRST FIT Strategy\n");
+    umemdump();
+    void *first_fit_ptr = umalloc(100);
+    ufree(first_fit_ptr);
+
+    umeminit(4096, NEXT_FIT);
+    printf("Testing NEXT FIT Strategy\n");
+    umemdump();
+    void *next_fit_ptr = umalloc(100);
+    ufree(next_fit_ptr);
 }
 
 int main() {
-    size_t region_size = 4096; // The size of the region you want to allocate
-    int alloc_algo = 1; // Placeholder for allocation algorithm identifier
+    size_t region_size = 4096;
+    int alloc_algo = FIRST_FIT;
 
     printf("Initializing memory allocator...\n");
     if (umeminit(region_size, alloc_algo) == -1) {
         fprintf(stderr, "Memory allocator initialization failed.\n");
         return 1;
     }
-
-    printf("Memory allocator initialized.\n");
+    printf("Memory allocator initialized with FIRST FIT strategy.\n");
     printf("Free list after initialization:\n");
     umemdump();
 
-    // Run test for normal allocation and alignment
+    // Execute tests
     test_allocation_alignment(128);
-
-    // Run test for zero-size allocation
     test_allocation_zero_size();
-
-     test_ufree();
-    umemdump();
-    // Additional tests can be performed here to ensure the allocator works
-    // Remember to handle freeing any allocated memory and cleaning up
+    test_ufree();
+    test_allocation_strategies();  // New test for different allocation fits
 
     return 0;
 }

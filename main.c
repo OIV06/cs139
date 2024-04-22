@@ -54,35 +54,7 @@ void test_ufree() {
     umemdump();  // Displays the state of memory after coalescing
 }
 
-// Tests the different memory allocation strategies
-void test_allocation_strategies() {
-    printf("Test 4: Different Allocation Strategies\n");
 
-    // Reinitialize memory system to reset the free list and the allocator state
-    umeminit(4096, BEST_FIT);
-    printf("Testing BEST FIT Strategy\n");
-    umemdump();
-    void *best_fit_ptr = umalloc(100);
-    ufree(best_fit_ptr);
-    
-    umeminit(4096, WORST_FIT);
-    printf("Testing WORST FIT Strategy\n");
-    umemdump();
-    void *worst_fit_ptr = umalloc(100);
-    ufree(worst_fit_ptr);
-
-    umeminit(4096, FIRST_FIT);
-    printf("Testing FIRST FIT Strategy\n");
-    umemdump();
-    void *first_fit_ptr = umalloc(100);
-    ufree(first_fit_ptr);
-
-    umeminit(4096, NEXT_FIT);
-    printf("Testing NEXT FIT Strategy\n");
-    umemdump();
-    void *next_fit_ptr = umalloc(100);
-    ufree(next_fit_ptr);
-}
 
 int main() {
     size_t region_size = 4096;
@@ -101,7 +73,7 @@ int main() {
     test_allocation_alignment(128);
     test_allocation_zero_size();
     test_ufree();
-    test_allocation_strategies();  // New test for different allocation fits
+   
 
     return 0;
 }

@@ -1,21 +1,9 @@
 #include "umem.h"
-#include "umem.c"
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
-void print_free_list(node_t *list) {
-    printf("Current free list:\n");
-    while (list) {
-        if (list->header) {
-            printf("Free block: Address=%p, Size=%zu, Is_Free=%d\n",
-                   (void *)list, list->header->size, list->header->is_free);
-        } else {
-            printf("Error: Free block at Address=%p has no header\n", (void *)list);
-        }
-        list = list->next;
-    }
-}
+
 
 void test_allocation_alignment(size_t size) {
     printf("Test 1: Allocation and Alignment\n");
@@ -58,17 +46,17 @@ void test_ufree() {
     // Free the first block
     assert(ufree(block1) == 0);
     printf("Block1 freed\n");
-    print_free_list(free_list);
+   
 
     // Free the third block
     assert(ufree(block3) == 0);
     printf("Block3 freed\n");
-    print_free_list(free_list);
+    
 
     // Free the second block, which should trigger coalescing with the first and third blocks
     assert(ufree(block2) == 0);
     printf("Block2 freed and coalesced\n");
-    print_free_list(free_list);
+umemdump();
 }
 
 int main() {
@@ -83,7 +71,7 @@ int main() {
 
     printf("Memory allocator initialized.\n");
     printf("Free list after initialization:\n");
-    print_free_list(free_list);
+    umemdump();
 
     // Run test for normal allocation and alignment
     test_allocation_alignment(128);
@@ -98,4 +86,3 @@ int main() {
 
     return 0;
 }
-

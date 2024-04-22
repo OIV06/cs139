@@ -32,7 +32,7 @@ size_t align_size(size_t size) {
     return (size + 7) & ~((size_t)7);
 }
 
-
+static int alloc_algo;
 
 int umeminit(size_t sizeOfRegion, int allocationAlgo) {
     if (allocator_initialized) {
@@ -71,7 +71,7 @@ int umeminit(size_t sizeOfRegion, int allocationAlgo) {
     return 0;
 }
 
-static int alloc_algo = FIRST_FIT;
+
 
 static node_t* last_allocated = NULL;
 

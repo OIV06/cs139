@@ -106,14 +106,15 @@ void test_worst_fit() {
 
 int main() {
     size_t region_size = 4096;
-    int alloc_algo = WORST_FIT;
+    int alloc_algo = WORST_FIT;  // Set your desired allocation strategy
 
-    printf("Initializing memory allocator...\n");
+    printf("Initializing memory allocator with the selected strategy...\n");
     if (umeminit(region_size, alloc_algo) == -1) {
         fprintf(stderr, "Memory allocator initialization failed.\n");
         return 1;
     }
-   
+
+    printf("Memory allocator initialized with strategy %d.\n", alloc_algo);
     printf("Free list after initialization:\n");
     umemdump();
 

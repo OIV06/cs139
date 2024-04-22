@@ -63,8 +63,8 @@ void print_block_info(const char* msg, void* ptr, size_t size) {
 }
 
 // Test the worst fit strategy
-void test_worst_fit() {
-    printf("\n--- Testing Worst Fit Strategy ---\n");
+void test_fit_strat() {
+    printf("\n--- Testing Fit Strategy ---\n");
     
     // Allocate a few blocks of different sizes
     void* ptr1 = umalloc(100); // Small block
@@ -106,7 +106,7 @@ void test_worst_fit() {
 
 int main() {
     size_t region_size = 4096;
-    int alloc_algo = WORST_FIT;  // Set your desired allocation strategy
+    int alloc_algo = WORST_FIT;  //BEST_FIT NEXT_FIT FIRST_FIT  Set your desired allocation strategy
 
     printf("Initializing memory allocator with the selected strategy...\n");
     if (umeminit(region_size, alloc_algo) == -1) {
@@ -122,7 +122,7 @@ int main() {
     test_allocation_alignment(128);
     test_allocation_zero_size();
     test_ufree();
-       test_worst_fit();
+       test_fit_strat();
 
     return 0;
 }

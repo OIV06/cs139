@@ -70,7 +70,7 @@ int umeminit(size_t sizeOfRegion, int allocationAlgo) {
     return 0;
 }
 
-static int allocation_algorithm = FIRST_FIT;
+static int alloc_algo = FIRST_FIT;
 
 static node_t* last_allocated = NULL;
 
@@ -139,7 +139,7 @@ void *umalloc(size_t size) {
     size = align_size(size);  
     node_t *block = NULL;
 
-    switch (allocation_algorithm) {
+    switch (alloc_algo) {
         case BEST_FIT:
             block = find_best_fit(size);
             break;

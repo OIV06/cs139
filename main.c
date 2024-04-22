@@ -54,18 +54,66 @@ void test_ufree() {
     umemdump();  // Displays the state of memory after coalescing
 }
 
+void print_block_info(const char* msg, void* ptr, size_t size) {
+    if (ptr == NULL) {
+        printf("%s - Allocation failed for size %zu\n", msg, size);
+    } else {
+        printf("%s - Allocation successful for size %zu. Address=%p\n", msg, size, ptr);
+    }
+}
 
+// Test the worst fit strategy
+void test_worst_fit() {
+    printf("\n--- Testing Worst Fit Strategy ---\n");
+    
+    // Allocate a few blocks of different sizes
+    void* ptr1 = umalloc(100); // Small block
+    print_block_info("Allocate 100 bytes", ptr1, 100);
+    
+    void* ptr2 = umalloc(500); // Medium block
+    print_block_info("Allocate 500 bytes", ptr2, 500);
+    
+    // This should take the largest available block
+    void* ptr3 = umalloc(800); // Large block, hoping to hit the worst fit
+    print_block_info("Allocate 800 bytes", ptr3, 800);
+
+    // Check free list status
+    printf("\nFree list after allocations:\n");
+    umemdump();
+
+    // Free the first two blocks
+    ufree(ptr1);
+    printf("Freed 100 bytes block.\n");
+    ufree(ptr2);
+    printf("Freed 500 bytes block.\n");
+
+    // Check free list status
+    printf("\nFree list after freeing two blocks:\n");
+    umemdump();
+
+    // Next allocation should pick the newly coalesced largest block
+    void* ptr4 = umalloc(200); // Another block, should also be from the largest block if worst fit works
+    print_block_info("Allocate 200 bytes", ptr4, 200);
+
+    // Check final state of free list
+    printf("\nFinal free list state:\n");
+    umemdump();
+
+    // Cleanup
+    ufree(ptr3);
+    ufree(ptr4);
+}
 
 int main() {
     size_t region_size = 4096;
-    int alloc_algo = FIRST_FIT;
+    int alloc_algo = WORST_FIT;
 
     printf("Initializing memory allocator...\n");
     if (umeminit(region_size, alloc_algo) == -1) {
         fprintf(stderr, "Memory allocator initialization failed.\n");
         return 1;
     }
-    printf("Memory allocator initialized with FIRST FIT strategy.\n");
+   
     printf("Free list after initialization:\n");
     umemdump();
 
@@ -73,7 +121,7 @@ int main() {
     test_allocation_alignment(128);
     test_allocation_zero_size();
     test_ufree();
-   
+       test_worst_fit();
 
     return 0;
 }

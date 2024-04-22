@@ -67,6 +67,7 @@ int umeminit(size_t sizeOfRegion, int allocationAlgo) {
     free_list = region;
 
     allocator_initialized = 1;  
+     alloc_algo = allocationAlgo; 
     return 0;
 }
 

@@ -14,25 +14,25 @@
 
 static int allocator_initialized = 0;  
 
-typedef struct header_t {
+typedef struct hed_r{
     size_t size;     
     int is_free;    
-    long magic;     // Magic number for error checking, if necessary
-} header_t;
+    long magic;     
+} hed_r;
 
-typedef struct node_t {
-    struct header_t *header;   // Pointer to the header of the block
-    struct node_t *next;       // Pointer to the next node in the list
-    struct node_t *prev;       // Pointer to the previous node in the list (if using a doubly-linked list)
-} node_t;
-node_t* free_list = NULL;
+typedef struct node {
+    struct hed_r *header;   // Pointer to the header of the block
+    struct node *next;       // Pointer to the next node in the list
+    struct node *prev;       // Pointer to the previous node in the list (if using a doubly-linked list)
+} node;
+node* freeList = NULL;
 
 
 size_t align_size(size_t size) {
     return (size + 7) & ~((size_t)7);
 }
 
-static int alloc_algo;
+static int alloc_algo = bestFit;
 
 int umeminit(size_t sizeOfRegion, int allocationAlgo) {
     if (allocator_initialized) {
@@ -45,26 +45,26 @@ int umeminit(size_t sizeOfRegion, int allocationAlgo) {
         return -1;
     }
 
-    size_t pages = (sizeOfRegion + sizeof(node_t) + PAGE_SIZE - 1) / PAGE_SIZE;
+    size_t pages = (sizeOfRegion + sizeof(node) + PAGE_SIZE - 1) / PAGE_SIZE;
     size_t region_size = pages * PAGE_SIZE;
 
-    node_t *region = (node_t *)mmap(NULL, region_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+    node *region = (node *)mmap(NULL, region_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
     if (region == MAP_FAILED) {
         perror("Failed to mmap");
         return -1;
     }
 
-    region->header = (header_t *)((char *)region + sizeof(node_t));
+    region->header = (hed_r*)((char *)region + sizeof(node));
     
     
-    region->header->size = region_size - sizeof(node_t) - sizeof(header_t);
+    region->header->size = region_size - sizeof(node) - sizeof(hed_r);
     region->header->is_free = 1;
     region->header->magic = 0x12345678; 
 
   
     region->next = NULL;
     region->prev = NULL;
-    free_list = region;
+    freeList = region;
 
     allocator_initialized = 1;  
      alloc_algo = allocationAlgo; 
@@ -73,61 +73,61 @@ int umeminit(size_t sizeOfRegion, int allocationAlgo) {
 
 
 
-static node_t* last_allocated = NULL;
+static node* last_allocated = NULL;
 
-node_t* find_best_fit(size_t size) {
-    node_t *current = free_list;
-    node_t *best_fit_node = NULL;
+node* find_bestFit(size_t size) {
+    node *curr = freeList;
+    node *bestFit = NULL;
 
-    while (current != NULL) {
-        if (current->header->is_free && current->header->size >= size) {
-            if (best_fit_node == NULL || current->header->size < best_fit_node->header->size) {
-                best_fit_node = current;
+    while (curr != NULL) {
+        if (curr->header->is_free && curr->header->size >= size) {
+            if (bestFit == NULL || curr->header->size < bestFit->header->size) {
+                bestFit = curr;
             }
         }
-        current = current->next;
+        curr = curr->next;
     }
-    return best_fit_node;
+    return bestFit;
 }
 
-node_t* find_worst_fit(size_t size) {
-    node_t *current = free_list;
-    node_t *worst_fit_node = NULL;
+node* find_worstFit(size_t size) {
+    node *curr = freeList;
+    node *worstFit = NULL;
 
-    while (current != NULL) {
-        if (current->header->is_free && current->header->size >= size) {
-            if (worst_fit_node == NULL || current->header->size > worst_fit_node->header->size) {
-                worst_fit_node = current;
+    while (curr != NULL) {
+        if (curr->header->is_free && curr->header->size >= size) {
+            if (worstFit == NULL || curr->header->size > worstFit->header->size) {
+                worstFit = curr;
             }
         }
-        current = current->next;
+        curr = curr->next;
     }
-    return worst_fit_node;
+    return worstFit;
 }
 
-node_t* find_first_fit(size_t size) {
-    node_t *current = free_list;
-    while (current != NULL) {
-        if (current->header->is_free && current->header->size >= size) {
-            return current;
+node* find_firstFit(size_t size) {
+    node *curr = freeList;
+    while (curr != NULL) {
+        if (curr->header->is_free && curr->header->size >= size) {
+            return curr;
         }
-        current = current->next;
+        curr = curr->next;
     }
     return NULL;
 }
 
-node_t* find_next_fit(size_t size) {
+node* find_nextFit(size_t size) {
     if (last_allocated == NULL) {
-        last_allocated = free_list;
+        last_allocated = freeList;
     }
-    node_t *current = last_allocated;
+    node *curr = last_allocated;
     do {
-        if (current->header->is_free && current->header->size >= size) {
-            last_allocated = current;
-            return current;
+        if (curr->header->is_free && curr->header->size >= size) {
+            last_allocated = curr;
+            return curr;
         }
-        current = current->next ? current->next : free_list; 
-    } while (current != last_allocated);
+        curr = curr->next ? curr->next : freeList; 
+    } while (curr != last_allocated);
 
     return NULL;
 }
@@ -138,20 +138,20 @@ void *umalloc(size_t size) {
     }
 
     size = align_size(size);  
-    node_t *block = NULL;
+    node *block = NULL;
 
     switch (alloc_algo) {
-        case BEST_FIT:
-            block = find_best_fit(size);
+        case bestFit:
+            block = find_bestFit(size);
             break;
         case WORST_FIT:
-            block = find_worst_fit(size);
+            block = find_worstFit(size);
             break;
         case FIRST_FIT:
-            block = find_first_fit(size);
+            block = find_firstFit(size);
             break;
         case NEXT_FIT:
-            block = find_next_fit(size);
+            block = find_nextFit(size);
             break;
         default:
             
@@ -164,22 +164,22 @@ void *umalloc(size_t size) {
     }
 
     // Check if we can split the block
-    size_t total_size = block->header->size + sizeof(header_t);  
-    if (total_size > size + sizeof(header_t) + sizeof(node_t)) {
+    size_t total_size = block->header->size + sizeof(hed_r);  
+    if (total_size > size + sizeof(hed_r) + sizeof(node)) {
         
-        node_t *new_block = (node_t *)((char *)(block->header) + size + sizeof(header_t));
-        new_block->header = (header_t *)((char *)new_block + sizeof(node_t));
-        new_block->header->size = total_size - size - sizeof(header_t) - sizeof(node_t);
-        new_block->header->is_free = 1;
-        new_block->header->magic = block->header->magic;
+        node *newBlock = (node *)((char *)(block->header) + size + sizeof(hed_r));
+        newBlock->header = (hed_r*)((char *)newBlock + sizeof(node));
+        newBlock->header->size = total_size - size - sizeof(hed_r) - sizeof(node);
+        newBlock->header->is_free = 1;
+        newBlock->header->magic = block->header->magic;
 
         
-        new_block->next = block->next;
-        new_block->prev = block;
+        newBlock->next = block->next;
+        newBlock->prev = block;
         if (block->next) {
-            block->next->prev = new_block;
+            block->next->prev = newBlock;
         }
-        block->next = new_block;
+        block->next = newBlock;
 
         
         block->header->size = size;
@@ -198,40 +198,38 @@ int ufree(void *ptr) {
     }
 
     // Get block header from pointer
-    header_t *block_header = (header_t *)ptr - 1;
+    hed_r *blockHeadr = (hed_r*)ptr - 1;
 
     // Mark block as free
-    block_header->is_free = 1;
+    blockHeadr->is_free = 1;
 
     // Coalesce with next block if possible
-    node_t *block_node = (node_t *)((char *)block_header - sizeof(node_t));
-    if (block_node->next && block_node->next->header->is_free) {
-        block_header->size += block_node->next->header->size + sizeof(header_t) + sizeof(node_t);
-        block_node->next = block_node->next->next;
-        if (block_node->next) {
-            block_node->next->prev = block_node;
+    node *blockNode = (node *)((char *)blockHeadr - sizeof(node));
+    if (blockNode->next && blockNode->next->header->is_free) {
+        blockHeadr->size += blockNode->next->header->size + sizeof(hed_r) + sizeof(node);
+        blockNode->next = blockNode->next->next;
+        if (blockNode->next) {
+            blockNode->next->prev = blockNode;
         }
     }
 
     // Coalesce with previous block if possible
-    if (block_node->prev && block_node->prev->header->is_free) {
-        block_node->prev->header->size += block_header->size + sizeof(header_t) + sizeof(node_t);
-        block_node->prev->next = block_node->next;
-        if (block_node->next) {
-            block_node->next->prev = block_node->prev;
+    if (blockNode->prev && blockNode->prev->header->is_free) {
+        blockNode->prev->header->size += blockHeadr->size + sizeof(hed_r) + sizeof(node);
+        blockNode->prev->next = blockNode->next;
+        if (blockNode->next) {
+            blockNode->next->prev = blockNode->prev;
         }
     }
 
     return 0;
 }
 void umemdump() {
-    node_t *current = free_list; // Use the global free list pointer
-    printf("Current free list:\n");
-    while (current != NULL) {
+    node *curr = freeList; // Use the global free list pointer
+    printf("curr free list:\n");
+    while (curr != NULL) {
         printf("Free block: Address=%p, Size=%zu, Is_Free=%d\n",
-               (void *)current, current->header->size, current->header->is_free);
-        current = current->next;
+               (void *)curr, curr->header->size, curr->header->is_free);
+        curr = curr->next;
     }
 }
-
-

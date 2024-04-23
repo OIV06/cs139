@@ -32,7 +32,7 @@ size_t align_size(size_t size) {
     return (size + 7) & ~((size_t)7);
 }
 
-static int alloc_algo = bestFit;
+static int alloc_algo = BEST_FIT;
 
 int umeminit(size_t sizeOfRegion, int allocationAlgo) {
     if (allocator_initialized) {
@@ -141,7 +141,7 @@ void *umalloc(size_t size) {
     node *block = NULL;
 
     switch (alloc_algo) {
-        case bestFit:
+        case BEST_FIT:
             block = find_bestFit(size);
             break;
         case WORST_FIT:
@@ -233,3 +233,5 @@ void umemdump() {
         curr = curr->next;
     }
 }
+
+

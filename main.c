@@ -83,7 +83,6 @@ void prntBlockInfo(const char *msg, void *ptr, size_t size)
 void testFitStrat()
 {
     printf("\nTESTING FIT STRAT\n");
-
     // allocate a few blocks of different sizes
     void *ptr1 = umalloc(100);
     prntBlockInfo("100 bytes", ptr1, 100);
@@ -91,17 +90,14 @@ void testFitStrat()
     prntBlockInfo("500 bytes", ptr2, 500);
     void *ptr3 = umalloc(800);
     prntBlockInfo("800 bytes", ptr3, 800);
-
     // check free list status
     printf("\nfree list after allocations:\n");
     umemdump();
-
     // free the first two blocks
     ufree(ptr1);
     printf("freed 100 bytes block.\n");
     ufree(ptr2);
     printf("freed 500 bytes block.\n");
-
     // checking status
     printf("\nfree list after freeing two blocks:\n");
     umemdump();
@@ -111,7 +107,6 @@ void testFitStrat()
     // check final state of free list
     printf("\nfinal free list state:\n");
     umemdump();
-
     // Cleanup
     ufree(ptr3);//freeeee
     ufree(ptr4);
